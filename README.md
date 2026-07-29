@@ -15,6 +15,29 @@ source is closed while the product is pre-revenue.
 
 **0.1.0-alpha.3** — 2026-07-29. [Full release notes](https://github.com/Wiinis/realty-ops/releases/tag/v0.1.0-alpha.3).
 
+### Added
+
+- Backend service (`backend/`): license activation/status, Stripe Checkout
+  + billing webhooks, Google OAuth (Calendar + Gmail, read-only) with
+  token storage and auto-refresh, and `scheduler.mjs` polling every 15
+  minutes to generate each connected customer's CEO Dashboard once they
+  cross their own local 7am. `dayLine`/`topFive`/`upcomingEvents` are now
+  real once a customer activates a license and connects Google — see
+  `backend/README.md` and `docs/business/ship-checklist.md`.
+- `ceoDashboard.mjs`: generates the CEO Dashboard deterministically from
+  Calendar/Gmail data — no LLM, no per-customer API cost. An earlier
+  Anthropic Managed Agents version that judged importance across meetings
+  and email is preserved on the `managed-agents-pipeline` git branch.
+- `npm run start-realty-ops-server`: brings up the backend and a
+  Cloudflare Tunnel together for exposing a local backend during a demo,
+  waiting for the backend to be healthy before starting the tunnel.
+- Connections screen: license activation and a "Connect Google" flow
+  (`src/components/Connections.jsx`), talking to the backend via
+  `electron/backendClient.js`.
+- Legal drafts (`docs/legal/`) and a pricing proposal
+  (`docs/business/pricing.md`) — both starting points, not finished
+  decisions; see their own inline notes.
+
 ## [0.1.0-alpha.3] - 2026-07-28
 
 ### Added
