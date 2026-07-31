@@ -13,30 +13,49 @@ source is closed while the product is pre-revenue.
 
 ## Latest release
 
-**0.1.0-alpha.3** — 2026-07-29. [Full release notes](https://github.com/Wiinis/realty-ops/releases/tag/v0.1.0-alpha.3).
+**0.1.0-alpha.4** — 2026-07-31. [Full release notes](https://github.com/Wiinis/realty-ops/releases/tag/v0.1.0-alpha.4).
 
 ### Added
 
-- Backend service (`backend/`): license activation/status, Stripe Checkout
-  + billing webhooks, Google OAuth (Calendar + Gmail, read-only) with
-  token storage and auto-refresh, and `scheduler.mjs` polling every 15
-  minutes to generate each connected customer's CEO Dashboard once they
-  cross their own local 7am. `dayLine`/`topFive`/`upcomingEvents` are now
-  real once a customer activates a license and connects Google — see
-  `backend/README.md` and `docs/business/ship-checklist.md`.
-- `ceoDashboard.mjs`: generates the CEO Dashboard deterministically from
-  Calendar/Gmail data — no LLM, no per-customer API cost. An earlier
-  Anthropic Managed Agents version that judged importance across meetings
-  and email is preserved on the `managed-agents-pipeline` git branch.
-- `npm run start-realty-ops-server`: brings up the backend and a
-  Cloudflare Tunnel together for exposing a local backend during a demo,
-  waiting for the backend to be healthy before starting the tunnel.
-- Connections screen: license activation and a "Connect Google" flow
-  (`src/components/Connections.jsx`), talking to the backend via
-  `electron/backendClient.js`.
-- Legal drafts (`docs/legal/`) and a pricing proposal
-  (`docs/business/pricing.md`) — both starting points, not finished
-  decisions; see their own inline notes.
+- Public staging deploy (`staging.wen-yen.xyz`): the renderer built standalone
+  as a static site, no backend, no Electron shell. Reskinned as a fictional
+  Honolulu portfolio ("Meridian Property Group") via a new `staging` customer
+  config and `src/data/stagingMockData.js`, selected at build time by
+  `CUSTOMER_ID` — real customers keep the original placeholder data
+  (`src/data/defaultMockData.js`), `mockData.js` is now just the selector
+  between the two. Non-functional screens (Connections, Refresh, the "Connect
+  Google" banner) are hidden behind a `liveBackendEnabled` config flag rather
+  than shipped as dead clicks. Deployed via Cloudflare Workers static assets
+  (`wrangler.jsonc`, `cloudflare/staging-worker.js`), gated behind HTTP Basic
+  Auth (`run_worker_first: true` is required for the auth check to actually
+  run — by default Workers serves matching static assets straight from
+  Cloudflare's edge cache without invoking the Worker at all). `npm run
+  build:staging` / `npm run deploy:staging`.
+
+### Fixed
+
+- `DayLine.jsx` crashed the whole renderer on any calendar item with a null
+  `time` (all-day events) — real Google Calendar data hits this immediately,
+  mock data never did, so it only surfaced once a real customer connected.
+  No error boundary existed to catch it, so the failure was a blank white
+  window. Untimed items are now filtered out of the hourly timeline strip
+  (they still show correctly everywhere else — Next 7/30 Days, etc.).
+- Disconnecting Google only cleared the OAuth token, not the cached CEO
+  Dashboard result, so the last real brief kept being served after
+  disconnect. Backend now purges the cached brief on disconnect; the
+  renderer also resets its live state immediately instead of waiting for a
+  restart.
+- "Refresh" and the daily scheduler only ever re-read the cached brief —
+  nothing asked the backend to regenerate from Google, so reconnecting and
+  refreshing kept coming back empty. Added an on-demand refresh endpoint
+  (`POST /customers/:licenseKey/ceo-dashboard/refresh`) and wired the app to
+  hit it live, falling back to the cache only if that call fails.
+
+### Added (dev)
+
+- `npm run server:demo`, a shortcut for `BACKEND_URL=http://localhost:8787
+  npm run dev` — the app previously required remembering to set that env var
+  by hand for local testing against a real backend.
 
 ## [0.1.0-alpha.3] - 2026-07-28
 
