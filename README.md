@@ -13,49 +13,106 @@ source is closed while the product is pre-revenue.
 
 ## Latest release
 
-**0.1.0-alpha.4** — 2026-07-31. [Full release notes](https://github.com/Wiinis/realty-ops/releases/tag/v0.1.0-alpha.4).
+**0.1.0-alpha.5** — 2026-08-14. [Full release notes](https://github.com/Wiinis/realty-ops/releases/tag/v0.1.0-alpha.5).
 
 ### Added
 
-- Public staging deploy (`staging.wen-yen.xyz`): the renderer built standalone
-  as a static site, no backend, no Electron shell. Reskinned as a fictional
-  Honolulu portfolio ("Meridian Property Group") via a new `staging` customer
-  config and `src/data/stagingMockData.js`, selected at build time by
-  `CUSTOMER_ID` — real customers keep the original placeholder data
-  (`src/data/defaultMockData.js`), `mockData.js` is now just the selector
-  between the two. Non-functional screens (Connections, Refresh, the "Connect
-  Google" banner) are hidden behind a `liveBackendEnabled` config flag rather
-  than shipped as dead clicks. Deployed via Cloudflare Workers static assets
-  (`wrangler.jsonc`, `cloudflare/staging-worker.js`), gated behind HTTP Basic
-  Auth (`run_worker_first: true` is required for the auth check to actually
-  run — by default Workers serves matching static assets straight from
-  Cloudflare's edge cache without invoking the Worker at all). `npm run
-  build:staging` / `npm run deploy:staging`.
+- Agent Workspace: a market-research and chat advisor backed by an Anthropic
+  Managed Agent (pinned to v6 of the agent, SSE-streamed), reachable from the
+  dashboard via `backend/routes/agent.mjs`.
+- A general Agent Work Board (`npm run agent-board`) for visually tracking
+  Codex CLI sessions and subagents across all local projects, supplemented by
+  the user-level machine-readable `.codex/worker-status.json` feed.
+- Five property-management panels: `rentDue`, `rentRoll`, `invoices`,
+  `managerAgent`, and `documentIntake`. `rentDue` and `invoices` are no
+  longer hand-typed placeholders — both are now derived deterministically
+  (`config/lateFeeCalc.js`, `config/invoiceGen.js`) from each tenant's real
+  `rentDueDay`/`lateFeeSchedule` and the rent roll (R1, R2/R7).
+- A live Telegram intake/outbound channel (sibling `Agent API` repo,
+  `src/telegramIntake.js`): text or voice messages to the bot are logged,
+  transcribed (voice, via Workers AI — no separate OpenAI key), and answered
+  with a real grounded Q&A reply (Claude Haiku over a static snapshot of
+  this repo's rentRoll/rentDue/invoices).
+- Manager Agent, project-manager sub-role (R6): an 8am cadence
+  (`backend/managerAgentScheduler.mjs`) sends Joko a real Telegram check-in
+  asking for a construction-project status update.
+- Manager Agent, assistant sub-role (R5): sweeps unread Gmail, classifies
+  and drafts replies via a new Agent API route (`POST /v1/email-draft-agent`,
+  generic wording only — never states a balance/date it wasn't given), and
+  creates real Gmail drafts (never sends). The 9am/3pm schedule itself ships
+  disabled (`enabled: false` in `CADENCES`) pending a decision on when to
+  turn it on.
+- Print-at-home delivery for invoices (R2/R7): texting the bot a request
+  like "send me a copy of an invoice" is classified (Haiku, matched only
+  against real invoice ids), formatted as plain text, and queued on a new
+  `print_jobs` table on this repo's backend. Each desktop app polls its own
+  queue every 5 minutes (`electron/printJobsSyncDaemon.js`) and writes
+  pending jobs into `userData/print-queue/`, where the existing local print
+  daemon (`electron/printQueue.js`) sends them to the OS printer.
+- Auto-updater activated: `electron/updater.js` now carries a real,
+  read-only, repo-scoped GitHub token, so installed copies of the app can
+  actually check GitHub Releases and self-update. This release itself still
+  needs a manual install (the currently-installed copy has no token baked
+  in) — every release after this one delivers automatically.
+- Per-tile connections: `gmail`/`google_calendar` rows in the Connections
+  screen now piggyback on the CEO Dashboard's single shared Google
+  connection instead of showing "Needs API credentials", with a per-row
+  Remove alongside the existing panel-wide Clear all. Added a "Log out"
+  action, separate from disconnecting Google.
+
+### Changed
+
+- Connections screen: per-tile rows are now grouped into "Needs attention"
+  and "Connected" sections (with counts) instead of one flat list, with a
+  short intro sentence explaining what's actually wired up today. The full
+  connector catalog browser is now a closed-by-default `<details>` instead
+  of always rendering ~30 list items below the fold.
+- Connections screen also gained review-only remediation for ambiguous
+  legacy panel-connection data left over from the panel consolidation below
+  — retained sources and folder paths are shown in full, with an explicit
+  Replace-or-Remove per conflict, never auto-resolved.
+- `pipeline`'s data shape gained `activeListings`, `pendingListings`,
+  `newThisWeek`, and `priceDrops` fields, rendered as additional rows in the
+  Pipeline tile, absorbing everything the removed `listings` panel had that
+  Pipeline didn't already cover (see Removed).
+- Rebuilt both mock datasets from scratch rather than tweaking values in
+  place, and deliberately split their intent. `src/data/defaultMockData.js`
+  (what every real, non-staging customer sees) now spans a deliberate spread
+  of edge cases it never exercised before — empty arrays, zero counts, a
+  null-time all-day calendar event, dollar-amount outliers, 60+ character
+  strings — so panel empty-states, zero/"Clear" fallback branches, currency
+  formatting at both extremes, and text wrapping all get exercised by mock
+  data instead of only showing up the first time a real customer's data hits
+  them. `src/data/stagingMockData.js` deliberately goes the other way and
+  stays flattering: it's what prospects see live at staging.wen-yen.xyz, so
+  it keeps non-empty showings/documents lists, a non-negative cash-position
+  delta, fully-staffed manager-agent specialists, and a positive market
+  trend — none of the new edge cases apply there.
+- The Telegram Q&A route moved from Opus to Claude Haiku 4.5 — a grounded
+  lookup over a small static snapshot never needed the larger model.
+
+### Removed
+
+- The `meetings` panel. Its three entries (08:30 standup, 12:00 lunch with
+  lender, 19:00 recap call) were verbatim duplicates of the hardcoded
+  DayLine timeline's meeting pins — same times, same titles, nothing extra.
+- The `tasks` panel. Its title/dueBy pairs duplicated the hardcoded TopFive
+  list, with every task's `owner` hardcoded to "You" and no field TopFive
+  didn't already expose.
+- The `listings` panel as a standalone tile. Its `underContract` count was a
+  literal duplicate of Pipeline's "Under contract" stage count (both `5` in
+  the current mock data); its remaining fields (`active`, `pending`,
+  `newThisWeek`, `priceDrops`) moved into `pipeline` instead of being lost
+  (see Changed).
+
+Net panel count: 12 before this release cycle, +5 property-management
+panels, -3 removed for redundancy = 14.
 
 ### Fixed
 
-- `DayLine.jsx` crashed the whole renderer on any calendar item with a null
-  `time` (all-day events) — real Google Calendar data hits this immediately,
-  mock data never did, so it only surfaced once a real customer connected.
-  No error boundary existed to catch it, so the failure was a blank white
-  window. Untimed items are now filtered out of the hourly timeline strip
-  (they still show correctly everywhere else — Next 7/30 Days, etc.).
-- Disconnecting Google only cleared the OAuth token, not the cached CEO
-  Dashboard result, so the last real brief kept being served after
-  disconnect. Backend now purges the cached brief on disconnect; the
-  renderer also resets its live state immediately instead of waiting for a
-  restart.
-- "Refresh" and the daily scheduler only ever re-read the cached brief —
-  nothing asked the backend to regenerate from Google, so reconnecting and
-  refreshing kept coming back empty. Added an on-demand refresh endpoint
-  (`POST /customers/:licenseKey/ceo-dashboard/refresh`) and wired the app to
-  hit it live, falling back to the cache only if that call fails.
-
-### Added (dev)
-
-- `npm run server:demo`, a shortcut for `BACKEND_URL=http://localhost:8787
-  npm run dev` — the app previously required remembering to set that env var
-  by hand for local testing against a real backend.
+- The Advisor returned "invalid response" on every request — the backend's
+  expected Managed Agent version pin had gone stale after the agent was
+  bumped to v6 upstream. Both sides now agree on v6.
 
 ## [0.1.0-alpha.3] - 2026-07-28
 
