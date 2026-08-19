@@ -13,18 +13,51 @@ source is closed while the product is pre-revenue.
 
 ## Latest release
 
-**0.1.0-alpha.6** — 2026-08-14. [Full release notes](https://github.com/Wiinis/realty-ops/releases/tag/v0.1.0-alpha.6).
+**0.1.0-alpha.7** — 2026-08-19. [Full release notes](https://github.com/Wiinis/realty-ops/releases/tag/v0.1.0-alpha.7).
 
-### Fixed
+### Added
 
-- `electron/license.js`'s `BACKEND_URL` fell back to an empty string, and
-  its only override was an env var meant for `npm run dev`. That env var
-  does not exist on a real end user's machine — a packaged app has no shell
-  to inherit it from, and nothing bundles a `.env` file — so every
-  previously built installer (including v0.1.0-alpha.5's) shipped with
-  license activation and Google connect silently non-functional for a
-  normal double-clicked install. The real backend URL is now the hardcoded
-  fallback, same pattern as `UPDATE_FEED_TOKEN` in `updater.js`.
+- AI usage tracking (`GET /customers/:licenseKey/agent/usage`, 30-day
+  rolling window, guarded by the existing `requireActiveCustomer` — no new
+  auth layer): a new `ai_usage` table records one row per AI call, tied to
+  the license key since Realty has no user/role model — a tenant-wide
+  total plus a per-feature breakdown (`next_best_actions`, `chat`,
+  `assistant_email_draft`), deliberately with no per-user rows or
+  owner/non-owner scoping. Recording happens at a single choke point
+  inside `runPortfolioAgent` (`backend/agentGateway.mjs`) so no call site
+  can silently miss being counted. Today every bucket's token counts and
+  `estimated_cost` come back `null` for every call — the managed-run
+  protocol this backend speaks emits no usage field on any event — so in
+  practice this ships as a call-volume/per-feature view, not a cost
+  tracker, until that upstream gap closes; the parser already picks up
+  real counts automatically if it does. See `backend/README.md`'s "AI
+  usage" section.
+- Operations & Documents folder scan: the desktop app can now scan a
+  connected folder for the Operations panel (`electron/folderScan.js`) and
+  the panel shows real files awaiting filing instead of demo rows once a
+  folder is connected. Non-recursive, top-level only, allowlisted to
+  `.pdf/.jpg/.jpeg/.png/.doc/.docx`, capped at 500 items per scan (with the
+  true total still reported). No document classification exists yet, so
+  scanned items show their real filename and an explicit "Not yet
+  classified" state rather than a guessed type or destination. A folder
+  that goes missing or becomes unreadable is reflected in Connections as
+  "Folder not found" / "Folder unreadable" instead of silently reverting to
+  "Not connected".
+- Document classification backend + main-process wiring
+  (`backend/documentClassification.mjs`, `electron/documentClassify.js`,
+  new `POST /customers/:licenseKey/documents/classify` route, new
+  `classify-panel-document` IPC channel): given a panelId and a bare file
+  name from a prior folder scan, the connected folder's document is read in
+  the main process, base64-encoded, and sent to the existing Agent API
+  gateway (one document per call, its own `document_classify` usage
+  feature) for a best-effort type/proposed-name/destination guess. Every
+  filesystem read is guarded against symlinks with both `lstat` (never
+  follows a link) and a `realpath` containment check against the connected
+  folder, closing an arbitrary-file-read/exfiltration hole a symlink
+  planted in the folder would otherwise open; `isEligibleName` also now
+  rejects `:` to block NTFS alternate-data-stream names. Renderer wiring
+  for this capability is not part of this release — the folder-scan panel
+  still shows the explicit "Not yet classified" state end to end.
 
 ## [0.1.0-alpha.3] - 2026-07-28
 
