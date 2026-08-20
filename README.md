@@ -13,20 +13,27 @@ source is closed while the product is pre-revenue.
 
 ## Latest release
 
-**0.1.0-alpha.7** — 2026-08-19. [Full release notes](https://github.com/Wiinis/realty-ops/releases/tag/v0.1.0-alpha.7).
+**0.1.0-alpha.8** — 2026-08-20. [Full release notes](https://github.com/Wiinis/realty-ops/releases/tag/v0.1.0-alpha.8).
 
-- **Usage visibility.** Every AI-assisted action a customer takes — research,
-  chat, drafting — is now tracked over a rolling 30-day window, broken down
-  by feature. The first step toward per-customer cost reporting.
-- **Real document intake.** The Operations & Documents panel now scans a
-  connected folder and shows the actual files waiting to be filed, replacing
-  placeholder rows the moment a folder is connected. Nothing is guessed — a
-  document's type isn't shown until it has actually been classified.
-- **Document classification, underway.** The groundwork for automatically
-  suggesting a document's type and filing destination is now in place on
-  the backend, including a fix for a file-handling edge case (symbolic
-  links) found and closed during review before release. The desktop
-  interface for this is still to come.
+### Changed
+
+- Operations & Documents folder scan is now manual, not automatic: the
+  panel used to re-scan the connected folder on every mount (including
+  every trip back from Connections), which is wrong for a large or slow/
+  network folder. Scanning now runs only from an explicit "Scan folder"
+  button next to "Review queue"; connection status is still checked
+  automatically (cheap, reads persisted `connections.json` only). A
+  connected-but-never-scanned-this-session state renders its own honest
+  "Not scanned yet" prompt instead of mock rows or a misleading zero count.
+  Rent & Collections gets the same manual-scan capability, without
+  Operations' mock fallback since it never had placeholder rows.
+- R5 Manager Agent assistant email cadence (Gmail sweep → classify → draft,
+  never sends) is re-enabled — reverses the 2026-08-14 "keep disabled"
+  decision by explicit request. Runs at 8am and 2pm in each customer's
+  configured local timezone (was 9am/3pm, disabled).
+- New customers now default to `Pacific/Honolulu` instead of
+  `America/New_York`; existing rows are migrated so scheduled
+  notifications don't fire six hours early for Hawaii-based customers.
 
 ## [0.1.0-alpha.3] - 2026-07-28
 
