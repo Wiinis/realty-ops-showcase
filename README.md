@@ -13,27 +13,44 @@ source is closed while the product is pre-revenue.
 
 ## Latest release
 
-**0.1.0-alpha.8** — 2026-08-20. [Full release notes](https://github.com/Wiinis/realty-ops/releases/tag/v0.1.0-alpha.8).
+**0.1.0-alpha.9** — 2026-08-21. [Full release notes](https://github.com/Wiinis/realty-ops/releases/tag/v0.1.0-alpha.9).
 
-### Changed
+### Fixed
 
-- Operations & Documents folder scan is now manual, not automatic: the
-  panel used to re-scan the connected folder on every mount (including
-  every trip back from Connections), which is wrong for a large or slow/
-  network folder. Scanning now runs only from an explicit "Scan folder"
-  button next to "Review queue"; connection status is still checked
-  automatically (cheap, reads persisted `connections.json` only). A
-  connected-but-never-scanned-this-session state renders its own honest
-  "Not scanned yet" prompt instead of mock rows or a misleading zero count.
-  Rent & Collections gets the same manual-scan capability, without
-  Operations' mock fallback since it never had placeholder rows.
-- R5 Manager Agent assistant email cadence (Gmail sweep → classify → draft,
-  never sends) is re-enabled — reverses the 2026-08-14 "keep disabled"
-  decision by explicit request. Runs at 8am and 2pm in each customer's
-  configured local timezone (was 9am/3pm, disabled).
-- New customers now default to `Pacific/Honolulu` instead of
-  `America/New_York`; existing rows are migrated so scheduled
-  notifications don't fire six hours early for Hawaii-based customers.
+- **Critical**: document classify calls carrying a PDF or image attachment
+  never actually reached the model — the Managed Agent's session-based
+  path silently drops `document`/`image` content blocks, so every real
+  scanned document since attachment support was added has classified as
+  though no file were attached. Attachment-carrying calls now bypass the
+  session and call the model directly instead. The Managed Agent backing
+  classify/chat/next-best-actions is bumped to v7 to match.
+- The demo data workspace's SQLite dependency (`node:sqlite`) isn't
+  available under Electron's bundled Node version, which broke app launch
+  entirely in some environments; switched to the WASM-based `sql.js`.
+
+### Added
+
+- Document classification review UI and a new "organize" (rename + move)
+  capability for scanned documents, gated on usable confidence and
+  re-verified server-side, not just in the renderer.
+- `.docx` classification support via local text extraction — no attachment
+  upload needed for Word files.
+- A local-first business data source adapter demo (staging/demo builds
+  only): Excel/CSV and SQLite import, field mapping, optional local Ollama
+  assistance.
+- Varied, randomized demo data generation for Rent & Operations
+  (staging/demo builds only) in place of a fixed, tiny dataset.
+- A local dev AI mode: classify/chat/next-best-actions call a developer's
+  own Anthropic key (defaulting to the cheapest current model) instead of
+  the shared Managed Agent during local development, so local testing
+  never depends on or spends the shared gateway's credits. Real releases
+  are unaffected and require explicit interactive confirmation before
+  shipping.
+- Six evidence-triggered Claude review agents (security, architecture,
+  AI-efficiency, financial-integrity, release-integration, handoff-triage).
+- A dev tool (`npm run randomize-test-filenames`) that renames files in a
+  test folder to random names, for testing document classify/organize
+  against real content instead of descriptive original filenames.
 
 ## [0.1.0-alpha.3] - 2026-07-28
 
