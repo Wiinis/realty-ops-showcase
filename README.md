@@ -13,7 +13,7 @@ source is closed while the product is pre-revenue.
 
 ## Latest release
 
-**0.1.0-alpha.9** — 2026-08-21. [Full release notes](https://github.com/Wiinis/realty-ops/releases/tag/v0.1.0-alpha.9).
+**0.1.0-alpha.10** — 2026-08-21. [Full release notes](https://github.com/Wiinis/realty-ops/releases/tag/v0.1.0-alpha.10).
 
 ### Fixed
 
@@ -27,6 +27,10 @@ source is closed while the product is pre-revenue.
 - The demo data workspace's SQLite dependency (`node:sqlite`) isn't
   available under Electron's bundled Node version, which broke app launch
   entirely in some environments; switched to the WASM-based `sql.js`.
+- A data-source-adapter test's fixed tick budget passed reliably on a warm
+  local machine but timed out against sql.js's one-time WASM compile on a
+  cold CI runner, failing the whole test gate and blocking both installer
+  builds; given a generous, CI-safe budget.
 
 ### Added
 
